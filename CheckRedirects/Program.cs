@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OfficeOpenXml;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
@@ -73,7 +74,21 @@ namespace CheckRedirects
 
         private static IEnumerable<RedirectUrls> ParseExcelFile(string filename)
         {
-            throw new NotImplementedException();
+            var redirectsList = new List<RedirectUrls>();
+            var excelPackage = new ExcelPackage(new System.IO.FileInfo(filename));
+            var worksheet = excelPackage.Workbook.Worksheets.First();
+            for (int i = 1; i <= 10000; i++)
+            {
+                var oldUrl = worksheet.Cells[$"A{i}"].Value?.ToString();
+                var newUrl = worksheet.Cells[$"B{i}"].Value?.ToString();
+                if (string.IsNullOrWhiteSpace(oldUrl) || string.IsNullOrWhiteSpace(newUrl))
+                { break; }
+                else
+                {
+                    redirectsList.Add(new RedirectUrls { Old = oldUrl, New = newUrl});
+                } 
+            }
+            return redirectsList;
         }
 
         private static string ParseFilename(string[] args)

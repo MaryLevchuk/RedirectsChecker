@@ -32,7 +32,7 @@ namespace CheckRedirects
     {
         public Response Get(Request request)
         {
-            throw new NotImplementedException();
+            return new Response { StatusCode = 200 };
         }
     }
 
