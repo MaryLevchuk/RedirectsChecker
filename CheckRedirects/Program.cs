@@ -20,17 +20,22 @@ namespace CheckRedirects
             Thread.CurrentThread.CurrentCulture = CultureInfo.GetCultureInfo(culture);
 
             var results = new CheckResults();
-            IEnumerable<RedirectUrls> redirectList = ParseExcelFile(filename);
+            var redirectList = ParseExcelFile(filename);
           
             foreach (var redirectUrls in redirectList)
             {
                 var request = new Request { RequestUrl = redirectUrls.Old };
                 var client = new Client();
                 var response = client.Get(request);
+                Console.Write(".");
                 var checkResult = Analyze(response, redirectUrls);
                 results.Add(checkResult);
             }
+
+            Console.WriteLine();
             Output(results);
+            Console.WriteLine("Finished...");
+            Console.ReadLine();
         }
 
         private static string ParseCulture(string[] args)
@@ -44,7 +49,15 @@ namespace CheckRedirects
         {
             foreach (var result in results.Items.Where(x => x.IsOk==false))
             {
-                Console.WriteLine(result);
+                if (result.IsOk)
+                {
+                    Console.Out.WriteLine(result);
+                }
+                else
+                {
+                    Console.Error.WriteLine(result);
+                }
+                
             }
         }
 
@@ -56,13 +69,12 @@ namespace CheckRedirects
             {
                 var redirectResponse = (RedirectResponse)response;
                 result.IsOk = (redirectResponse.RedirectUrl.Equals(urls.New, StringComparison.CurrentCultureIgnoreCase));
-                result.Details = $"{response.StatusCode} - {redirectResponse.RedirectUrl}";
-                
+                result.Details = $"{response.StatusCode} - {urls.Old} -> {redirectResponse.RedirectUrl}, Expected: {urls.New}";
             }
             else
             {
                 result.IsOk = false;
-                result.Details = urls.Old;
+                result.Details = $"{response.StatusCode} - {urls.Old}, Expected: {urls.New}";
             }
             return result;
             //var redirectResponse = response as RedirectResponse;
@@ -72,7 +84,7 @@ namespace CheckRedirects
             //else { }
         }
 
-        private static IEnumerable<RedirectUrls> ParseExcelFile(string filename)
+        private static List<RedirectUrls> ParseExcelFile(string filename)
         {
             var redirectsList = new List<RedirectUrls>();
             var excelPackage = new ExcelPackage(new System.IO.FileInfo(filename));
@@ -81,12 +93,15 @@ namespace CheckRedirects
             {
                 var oldUrl = worksheet.Cells[$"A{i}"].Value?.ToString();
                 var newUrl = worksheet.Cells[$"B{i}"].Value?.ToString();
-                if (string.IsNullOrWhiteSpace(oldUrl) || string.IsNullOrWhiteSpace(newUrl))
+                if (string.IsNullOrWhiteSpace(oldUrl) && string.IsNullOrWhiteSpace(newUrl))
                 { break; }
                 else
+                    if (string.IsNullOrWhiteSpace(oldUrl) || string.IsNullOrWhiteSpace(newUrl))
+                { continue; }
+                else
                 {
-                    redirectsList.Add(new RedirectUrls { Old = oldUrl, New = newUrl});
-                } 
+                    redirectsList.Add(new RedirectUrls { Old = oldUrl, New = newUrl });
+                }
             }
             return redirectsList;
         }
